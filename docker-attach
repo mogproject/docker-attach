@@ -1,0 +1,5 @@
+#!/bin/sh
+
+[[ -n "$1" ]] || { echo "Usage: `basename $0` <partial container ID or name>"; exit 0 ; }
+FULL_ID=$(docker inspect --format='{{.Id}}' $1)
+sudo /bin/sh -c "cd /var/lib/docker/execdriver/native/$FULL_ID && nsinit exec bash"

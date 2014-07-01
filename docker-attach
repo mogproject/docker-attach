@@ -1,5 +1,53 @@
 #!/bin/sh
 
-[[ -n "$1" ]] || { echo "Usage: `basename $0` <partial container ID or name>"; exit 0 ; }
-FULL_ID=$(docker inspect --format='{{.Id}}' $1)
-sudo /bin/sh -c "cd /var/lib/docker/execdriver/native/$FULL_ID && nsinit exec bash"
+#
+# ugly
+#
+
+# temporary files
+TMP_DOCKER_PS=/tmp/docker-attach.ps.tmp
+TMP_B2D_CONF=/tmp/docker-attach.conf.tmp
+
+nsenter_by_cid() {
+    CONTAINER_ID=$1
+    PID=$(docker inspect --format '{{.State.Pid}}' $CONTAINER_ID)
+    sudo nsenter --mount --uts --ipc --net --pid --target $PID
+}
+
+main() {
+    # parse command-line argument
+    CONTAINER_ID=$1
+
+    # TODO: if no arguments, show prompt to select
+    # docker ps | tee $TMP_DOCKER_PS
+
+    # run nsenter
+    nsenter_by_cid $CONTAINER_ID
+
+    # clean temporary files
+    # rm -f $TMP_DOCKER_PS
+}
+
+case $(uname -s) in
+    Darwin)
+        # TODO: check docker, boot2docker is installed
+
+        # read boot2docker config
+        boot2docker config 2>/dev/null | grep SSH | sed -e 's/ = /=/' > $TMP_B2D_CONF
+        source /tmp/docker-attach.tmp
+        rm -f $TMP_B2D_CONF
+
+        # settings for boot2docker-cli
+        SSH_USER=docker
+        SSH_HOST=localhost
+        SSH_OPTS="-t"
+        SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no"
+        SSH_OPTS="$SSH_OPTS -o UserKnownHostsFile=/dev/null"
+        SSH_OPTS="$SSH_OPTS -o LogLevel=quiet"
+        SSH_OPTS="$SSH_OPTS -o PreferredAuthentications=publickey"
+        SSH_CMD="$SSH -p $SSHPort -i $SSHKey -l $SSH_USER $SSH_OPTS $SSH_HOST"
+        $SSH_CMD docker-attach $*
+        ;;
+    *)
+        main $*
+esac

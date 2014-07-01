@@ -6,8 +6,8 @@
 B2D_ROOT=/var/lib/boot2docker
 B2D_BIN_DIR=$B2D_ROOT/bin
 REPO_NSINIT=github.com/docker/libcontainer/nsinit
-URL_DOCKER_ATTACH=https://raw.githubusercontent.com/mogproject/docker-attach/master/docker-attach
-URL_BOOTLOCAL=https://raw.githubusercontent.com/mogproject/docker-attach/master/bootlocal.sh
+URL_DOCKER_ATTACH=https://raw.githubusercontent.com/mogproject/docker-attach/scripts-for-nsinit/docker-attach
+URL_BOOTLOCAL=https://raw.githubusercontent.com/mogproject/docker-attach/scripts-for-nsinit/bootlocal.sh
 GOPATH=$HOME/go
 
 # logger

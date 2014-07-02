@@ -34,7 +34,7 @@ case $(uname -s) in
 
         # read boot2docker config
         boot2docker config 2>/dev/null | grep SSH | sed -e 's/ = /=/' > $TMP_B2D_CONF
-        source /tmp/docker-attach.tmp
+        source $TMP_BD2_CONF
         rm -f $TMP_B2D_CONF
 
         # settings for boot2docker-cli
@@ -46,8 +46,8 @@ case $(uname -s) in
         SSH_OPTS="$SSH_OPTS -o LogLevel=quiet"
         SSH_OPTS="$SSH_OPTS -o PreferredAuthentications=publickey"
         SSH_CMD="$SSH -p $SSHPort -i $SSHKey -l $SSH_USER $SSH_OPTS $SSH_HOST"
-        $SSH_CMD docker-attach $*
+        $SSH_CMD docker-attach $@
         ;;
     *)
-        main $*
+        main $@
 esac

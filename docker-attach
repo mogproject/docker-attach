@@ -34,7 +34,7 @@ case $(uname -s) in
 
         # read boot2docker config
         boot2docker config 2>/dev/null | grep SSH | sed -e 's/ = /=/' > $TMP_B2D_CONF
-        source $TMP_BD2_CONF
+        source $TMP_B2D_CONF
         rm -f $TMP_B2D_CONF
 
         # settings for boot2docker-cli

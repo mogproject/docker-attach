@@ -1,53 +1,87 @@
 #!/bin/sh
-
 #
-# ugly
+# Attach to the running Docker container
 #
 
-# temporary files
-TMP_DOCKER_PS=/tmp/docker-attach.ps.tmp
-TMP_B2D_CONF=/tmp/docker-attach.conf.tmp
-
-nsenter_by_cid() {
-    CONTAINER_ID=$1
-    PID=$(docker inspect --format '{{.State.Pid}}' $CONTAINER_ID)
-    sudo nsenter --mount --uts --ipc --net --pid --target $PID
+usage() {
+    echo "Usage: $0 [CONTAINER [COMMAND [CMD_ARGS...]]] "
+    exit 1
 }
 
-main() {
-    # parse command-line argument
-    CONTAINER_ID=$1
+# assume that all required commands exist
+assume_cmd_exists() {
+    while [ -n "$1" ]; do
+        command -v $1 >/dev/null 2>&1 || {
+            log error "command '$1' is required but not installed.  Aborting."
+            exit 1
+        }
+        shift
+    done
+}
 
-    # TODO: if no arguments, show prompt to select
-    # docker ps | tee $TMP_DOCKER_PS
+get_config_value() {
+    echo "$1" | grep "^$2 = " | sed 's/.* = //' | sed 's/"//g'
+}
 
-    # run nsenter
-    nsenter_by_cid $CONTAINER_ID
+boot2docker_ssh() {
+    # read boot2docker config
+    B2D_CONFIG_OUT=$(boot2docker config 2>/dev/null)
+    SSH=$(get_config_value "$B2D_CONFIG_OUT" SSH)
+    SSH_PORT=$(get_config_value "$B2D_CONFIG_OUT" SSHPort)
+    SSH_KEY=$(get_config_value "$B2D_CONFIG_OUT" SSHKey)
 
-    # clean temporary files
-    # rm -f $TMP_DOCKER_PS
+    # settings for boot2docker-cli
+    SSH_USER=docker
+    SSH_HOST=localhost
+    SSH_OPTS="-t"
+    SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no"
+    SSH_OPTS="$SSH_OPTS -o UserKnownHostsFile=/dev/null"
+    SSH_OPTS="$SSH_OPTS -o LogLevel=quiet"
+    SSH_OPTS="$SSH_OPTS -o PreferredAuthentications=publickey"
+    echo "$SSH -p $SSH_PORT -i $SSH_KEY -l $SSH_USER $SSH_OPTS $SSH_HOST"
+}
+
+nsenter_with_cid() {
+    local container_id=$1
+    shift
+    PID=$(docker inspect --format '{{.State.Pid}}' $container_id) || return 1
+    sudo nsenter --mount --uts --ipc --net --pid --target $PID $@ || return 1
+}
+
+choose_container() {
+    local ps_result=$(docker ps)
+    local num_containers=$(echo "$ps_result" | wc -l)
+    num_containers=$(( $num_containers - 1 ))
+    if [ "$num_containers" -eq 0 ]; then
+        echo 'There is no running container.'
+        return 0
+    fi
+    echo "$ps_result" | \
+        awk '{ print " " sprintf("%-5s", NR==1 ? "NO." : sprintf("[%d]", NR-1)) $0 }' | \
+        cut -c-140
+    echo
+    read -p "Enter number (1-$num_containers): " ret
+    if [ -z "$ret" ]; then
+        return 0
+    fi
+    if ! [ $ret -ge 1 -a $ret -le $num_containers ]; then
+        echo "Invalid container number: $ret"
+        return 1
+    fi
+    local container_id=$(echo "$ps_result" | awk 'NR==1+'"$ret"'{ print $1 }')
+    nsenter_with_cid "$container_id"
 }
 
 case $(uname -s) in
     Darwin)
-        # TODO: check docker, boot2docker is installed
-
-        # read boot2docker config
-        boot2docker config 2>/dev/null | grep SSH | sed -e 's/ = /=/' > $TMP_B2D_CONF
-        source $TMP_B2D_CONF
-        rm -f $TMP_B2D_CONF
-
-        # settings for boot2docker-cli
-        SSH_USER=docker
-        SSH_HOST=localhost
-        SSH_OPTS="-t"
-        SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=no"
-        SSH_OPTS="$SSH_OPTS -o UserKnownHostsFile=/dev/null"
-        SSH_OPTS="$SSH_OPTS -o LogLevel=quiet"
-        SSH_OPTS="$SSH_OPTS -o PreferredAuthentications=publickey"
-        SSH_CMD="$SSH -p $SSHPort -i $SSHKey -l $SSH_USER $SSH_OPTS $SSH_HOST"
-        $SSH_CMD docker-attach $@
+        assume_cmd_exists boot2docker
+        $(boot2docker_ssh) $(basename $0) $@
         ;;
     *)
-        main $@
+        case "$1" in
+            -h | --help) usage;;
+            "") choose_container;;
+            *) nsenter_with_cid $@;;
+        esac
+        ;;
 esac

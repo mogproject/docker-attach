@@ -24,11 +24,8 @@ cid2=$(docker ps -lq --no-trunc=true)
 
 docker ps
 
-sudo curl -o /usr/local/bin/docker-attach \
-    https://raw.githubusercontent.com/mogproject/docker-attach/master/docker-attach
-
-sudo chmod +x /usr/local/bin/docker-attach
-
+sudo rm -f /usr/local/bin/docker-attach
+sudo ln -s $PROJECT_DIR/docker-attach /usr/local/bin/docker-attach
 $PROJECT_DIR/test/upload_script.sh
 
 # attach to the first container

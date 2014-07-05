@@ -1,0 +1,4 @@
+#!/bin/sh
+
+rm -f /usr/local/bin/docker-attach
+ln -s /var/lib/boot2docker/bin/docker-attach /usr/local/bin/docker-attach

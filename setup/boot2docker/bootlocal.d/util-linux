@@ -1,0 +1,3 @@
+#!/bin/sh
+
+su - docker -c "tce-load -i /var/lib/boot2docker/optional/util-linux.tcz"

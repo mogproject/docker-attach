@@ -29,7 +29,7 @@ TBD
 1. Download and install the latest release of the [Docker OSX Installer](https://github.com/boot2docker/osx-installer/releases)
 
 2. Run the setup shell script  
-(This will install util-linux(incl. nsenter) and docker-attach command)
+(This will install util-linux(incl. nsenter) and docker-attach command in the boot2docker VM)
 
 ```
 boot2docker ssh '/bin/sh -c "curl https://raw.githubusercontent.com/mogproject/docker-attach/master/setup/boot2docker/setup_boot2docker.sh | /bin/sh"'

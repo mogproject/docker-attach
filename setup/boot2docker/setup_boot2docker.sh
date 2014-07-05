@@ -3,10 +3,15 @@
 # Setup script for boot2docker-vm
 #
 
+BRANCH=${BRANCH:-"master"}
 B2D_ROOT=/var/lib/boot2docker
 B2D_BIN_DIR=$B2D_ROOT/bin
-URL_DOCKER_ATTACH=https://raw.githubusercontent.com/mogproject/docker-attach/master/docker-attach
-URL_BOOTLOCAL=https://raw.githubusercontent.com/mogproject/docker-attach/master/bootlocal.sh
+B2D_BOOTLOCAL_DIR=$B2D_ROOT/bootlocal.d
+URL_GH=https://raw.githubusercontent.com/mogproject/docker-attach/$BRANCH
+URL_DOCKER_ATTACH=$URL_GH/docker-attach
+URL_BOOTLOCAL=$URL_GH/setup/boot2docker/bootlocal.sh
+URL_BOOTLOCAL_UTIL_LINUX=$URL_GH/setup/boot2docker/bootlocal.d/util-linux
+URL_BOOTLOCAL_DOCKER_ATTACH=$URL_GH/setup/boot2docker/bootlocal.d/docker-attach
 UTIL_LINUX=$B2D_ROOT/optional/util-linux.tcz
 
 # logger
@@ -54,26 +59,41 @@ assume_cmd_exists() {
     done
 }
 
+# download and set executable
+download_executable() {
+    local url=$1
+    local dest=$2/${1##*/}
+    log info "Downloading $url to $dest"
+    sudo curl -s -o $dest $url || return 1
+    sudo chmod +x $dest || return 1
+}
+
 # main function
 main() {
     # create directory to persist commands
     log info "Creating directory $B2D_BIN_DIR"
     sudo mkdir -p $B2D_BIN_DIR
 
+    # create directory for bootlocal.sh
+    log info "Creating directory $B2D_BOOTLOCAL_DIR"
+    sudo mkdir -p $B2D_BOOTLOCAL_DIR
+
+    # download bootlocal.sh
+    download_executable $URL_BOOTLOCAL $B2D_ROOT || return 1
+
     # download and persist util-linux
     log info "Downloading util-linux."
     tce-load -w util-linux || return 1
     sudo mv -f /tmp/tce/optional $B2D_ROOT/
 
-    # download docker-attach
-    log info "Downloading $B2D_BIN_DIR/docker-attach"
-    sudo curl -s -o $B2D_BIN_DIR/docker-attach $URL_DOCKER_ATTACH || return 1
-    sudo chmod +x $B2D_BIN_DIR/docker-attach || return 1
+    # add util-linux to bootlocal.d
+    download_executable $URL_BOOTLOCAL_UTIL_LINUX $B2D_BOOTLOCAL_DIR || return 1
 
-    # download bootlocal.sh
-    log info "Downloading $B2D_ROOT/bootlocal.sh"
-    sudo curl -s -o $B2D_ROOT/bootlocal.sh $URL_BOOTLOCAL || return 1
-    sudo chmod +x $B2D_ROOT/bootlocal.sh || return 1
+    # download docker-attach
+    download_executable $URL_DOCKER_ATTACH $B2D_BIN_DIR || return 1
+
+    # add docker-attach to bootlocal.d
+    download_executable $URL_BOOTLOCAL_DOCKER_ATTACH $B2D_BOOTLOCAL_DIR || return 1
 
     # run bootlocal.sh
     log info "Running $B2D_ROOT/bootlocal.sh"

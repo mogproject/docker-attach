@@ -6,6 +6,7 @@
 #
 
 PROJECT_DIR=$(cd $(dirname $0)/.. && pwd -P)
+BRANCH=${BRANCH:-"master"}
 
 echo "First, enter your password if required."
 sudo id
@@ -14,7 +15,7 @@ boot2docker halt
 boot2docker delete
 boot2docker init
 boot2docker up
-boot2docker ssh '/bin/sh -c "curl https://raw.githubusercontent.com/mogproject/docker-attach/master/setup_boot2docker.sh | /bin/sh"'
+boot2docker ssh '/bin/sh -c "export BRANCH='$BRANCH';curl https://raw.githubusercontent.com/mogproject/docker-attach/$BRANCH/setup_boot2docker.sh | /bin/sh"'
 
 docker run -d -t centos /bin/sleep 10000
 cid1=$(docker ps -lq --no-trunc=true)
